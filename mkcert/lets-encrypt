@@ -1,0 +1,53 @@
+#!/bin/bash
+if [[ $# < 3 ]]; then
+  echo "lets-encrypt HOST DOMAIN IP"
+  exit
+fi
+HOST=$1
+DOMAIN=$2
+IP=$3
+FQDN=$HOST.$DOMAIN
+GATEWAY=gateway.rstms.net
+ACME_STAGING=https://acme-staging-v02.api.letsencrypt.org/directory
+ACME=https://acme-v02.api.letsencrypt.org/directory
+GATEWAY_IP=$(dnsip $GATEWAY)
+CERT_DIR=/var/certs
+
+dns_delete() {
+  DELETE_FQDN=$1
+  RECORD_ID=$(cli4 --get name=$DELETE_FQDN type=A /zones/:rstms.net/dns-records | jq -r '.[]|.id')
+  echo "RECORD_ID=$RECORD_ID"
+  echo cli4 --delete /zones/:rstms.net/dns-records/:$RECORD_ID
+  cli4 --delete /zones/:rstms.net/dns-records/:$RECORD_ID
+}
+
+dns_add() {
+  NEW_IP=$1
+  echo "ADDING $FQDN $NEW_IP"
+  echo cli4 --post name="$HOST" type="A" content="$NEW_IP" /zones/:$DOMAIN/dns-records
+  cli4 --post name="$HOST" type="A" content="$NEW_IP" /zones/:$DOMAIN/dns-records
+}
+
+dns_delete $FQDN
+dns_add $GATEWAY_IP
+
+DNS_READY=0
+while [ "$DNS_READY" == "0" ] ; do
+  DNS_IP="$(dnsip $FQDN)"
+  echo "DNS_IP=$DNS_IP"
+  if [ "$DNS_IP" == "$GATEWAY_IP" ]; then
+    DNS_READY=1
+  else
+    echo "Waiting for DNS update to propagate..."
+    sleep 1
+  fi
+done
+
+DOCKER_RUN="docker run -p 80:80 -v $CERT_DIR:/var/certs --rm smallstep/step-cli"
+STEP_CLI="step ca certificate $FQDN /var/certs/$FQDN.crt /var/certs/$FQDN.key --acme $ACME"
+ssh $GATEWAY $DOCKER_RUN $STEP_CLI
+scp $GATEWAY:$FQDN.{crt,key} .
+ssh $GATEWAY rm $FQDN.{crt,key}
+
+dns_delete $FQDN
+dns_add $IP
