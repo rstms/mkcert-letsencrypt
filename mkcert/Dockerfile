@@ -1,5 +1,7 @@
+FROM smallstep/step-cli as step
 FROM golang:alpine
-RUN apk update && apk add bash openssh python3 py3-pip bash openssh djbdns-common jq
+COPY --from=step /usr/local/bin/step /usr/local/bin/step
+RUN apk update && apk add bash sed openssh python3 py3-pip bash openssh djbdns-common jq
 RUN pip install cloudflare
 COPY lets-encrypt /usr/local/bin
 RUN adduser mkcert </dev/null || true

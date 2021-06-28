@@ -1,11 +1,11 @@
 mkdir ~/.ssh
-echo -e $SSH_KEY>.ssh/gateway
+echo $GATEWAY_KEY | base64 -d >.ssh/gateway
+chmod 0400 .ssh/gateway
 cat >.ssh/config <<-EOF
 host $GATEWAY
-  User $SSH_USER
+  User $GATEWAY_USER
   IdentityFile ~/.ssh/gateway
   IdentitiesOnly yes
   StrictHostKeyChecking No
 EOF
-chmod 0400 .ssh/gateway
 

@@ -1,17 +1,21 @@
 #!/bin/bash
-if [[ $# < 3 ]]; then
-  echo "lets-encrypt HOST DOMAIN IP"
+if [[ $# < 2 ]]; then
+  echo "lets-encrypt FQDN IP"
   exit
 fi
-HOST=$1
-DOMAIN=$2
-IP=$3
-FQDN=$HOST.$DOMAIN
+FQDN=$1
+HOST=$(echo $FQDN | sed -e 's/^\([^.]*\)\.\(.*\)$/\1/')
+DOMAIN=$(echo $FQDN | sed -e 's/^\([^.]*\)\.\(.*\)$/\2/')
+IP=$2
+echo FQDN=$FQDN
+echo HOST=$HOST
+echo DOMAIN=$DOMAIN
+echo IP=$IP
 GATEWAY=gateway.rstms.net
 ACME_STAGING=https://acme-staging-v02.api.letsencrypt.org/directory
 ACME=https://acme-v02.api.letsencrypt.org/directory
 GATEWAY_IP=$(dnsip $GATEWAY)
-CERT_DIR=/var/certs
+CERT_DIR=/certs
 
 dns_delete() {
   DELETE_FQDN=$1
@@ -21,33 +25,43 @@ dns_delete() {
   cli4 --delete /zones/:rstms.net/dns-records/:$RECORD_ID
 }
 
-dns_add() {
+# use awk to strip trailing white space
+dns_lookup() {
+  dnsip $1 | awk '{print $1}'
+}
+
+dns_wait() {
+  WAIT_IP=$1
+  echo WAIT_IP=$WAIT_IP
+  echo FQDN=$FQDN
+  echo -n "Waiting for DNS to propagate..."
+  DNS_FOUND=0
+  while [[ $DNS_FOUND == 0 ]] ; do
+    DNS_IP=$(dns_lookup $FQDN)
+    if [ "$DNS_IP" = "$WAIT_IP" ]; then
+      echo "DNS_IP=$DNS_IP"
+      DNS_FOUND=1
+    else
+      echo -n .
+      sleep 1
+    fi
+  done
+}
+
+dns_update() {
+  dns_delete $FQDN
   NEW_IP=$1
   echo "ADDING $FQDN $NEW_IP"
   echo cli4 --post name="$HOST" type="A" content="$NEW_IP" /zones/:$DOMAIN/dns-records
   cli4 --post name="$HOST" type="A" content="$NEW_IP" /zones/:$DOMAIN/dns-records
+  dns_wait $NEW_IP
 }
 
-dns_delete $FQDN
-dns_add $GATEWAY_IP
+dns_update $GATEWAY_IP
 
-DNS_READY=0
-while [ "$DNS_READY" == "0" ] ; do
-  DNS_IP="$(dnsip $FQDN)"
-  echo "DNS_IP=$DNS_IP"
-  if [ "$DNS_IP" == "$GATEWAY_IP" ]; then
-    DNS_READY=1
-  else
-    echo "Waiting for DNS update to propagate..."
-    sleep 1
-  fi
-done
-
-DOCKER_RUN="docker run -p 80:80 -v $CERT_DIR:/var/certs --rm smallstep/step-cli"
-STEP_CLI="step ca certificate $FQDN /var/certs/$FQDN.crt /var/certs/$FQDN.key --acme $ACME"
-ssh $GATEWAY $DOCKER_RUN $STEP_CLI
-scp $GATEWAY:$FQDN.{crt,key} .
-ssh $GATEWAY rm $FQDN.{crt,key}
+ssh -N -R 80:localhost:80 $GATEWAY >ssh.log 2>&1 &
+step ca certificate $FQDN $CERT_DIR/$FQDN.crt $CERT_DIR/$FQDN.key --acme $ACME
+pkill ssh
 
 dns_delete $FQDN
-dns_add $IP
+dns_update $IP
