@@ -22,6 +22,7 @@ delete cloudflare DNS A record for FQDN
 
 
 ### References
-https://blog.cloudflare.com/python-cloudflare/
-https://hub.docker.com/r/smallstep/step-cli
-https://api.cloudflare.com/
+
+- https://blog.cloudflare.com/python-cloudflare/
+- https://hub.docker.com/r/smallstep/step-cli
+- https://api.cloudflare.com/
