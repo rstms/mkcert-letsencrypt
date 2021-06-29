@@ -1,0 +1,13 @@
+#!/bin/bash
+
+FQDN=$1
+IP=$2
+
+CFG_FILE=~/.mkcert
+KEY_FILE="$(awk <$CFG_FILE -F= '/^GATEWAY_KEY_FILE/{print $2}')"
+GATEWAY_KEY="$(base64 -w0 <$KEY_FILE)"
+VOL_ARGS="-v $(pwd):/certs"
+ENV_ARGS="--env-file ${HOME}/.mkcert -e GATEWAY_KEY=${GATEWAY_KEY}"
+RUN="docker run -it --rm --dns=1.1.1.1 ${VOL_ARGS} ${ENV_ARGS} mkcert"
+
+$RUN bash -l -c "lets-encrypt $FQDN $IP"

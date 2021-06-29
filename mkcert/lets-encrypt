@@ -13,7 +13,13 @@ echo DOMAIN=$DOMAIN
 echo IP=$IP
 GATEWAY=gateway.rstms.net
 ACME_STAGING=https://acme-staging-v02.api.letsencrypt.org/directory
-ACME=https://acme-v02.api.letsencrypt.org/directory
+ACME_PROD=https://acme-v02.api.letsencrypt.org/directory
+if [ -v STAGING ]; then
+  ACME=$ACME_STAGING
+else
+  ACME=$ACME_PROD
+fi
+echo ACME=$ACME
 GATEWAY_IP=$(dnsip $GATEWAY)
 CERT_DIR=/certs
 

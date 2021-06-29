@@ -19,3 +19,7 @@ test:
 
 shell:
 	${RUN} bash -l
+
+install: build
+	sudo cp script/mkcert /usr/local/bin
+
