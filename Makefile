@@ -15,7 +15,10 @@ ENV_ARGS=--env-file ~/.mkcert -e GATEWAY_KEY=${GATEWAY_KEY}
 RUN=docker run -it --rm --dns=1.1.1.1 ${VOL_ARGS} ${ENV_ARGS} mkcert
 
 test:
-	${RUN} bash -l -c 'lets-encrypt vss.rstms.net 10.1.2.1'
+	${RUN} bash -l -c 'env STAGING=1 lets-encrypt vss.rstms.net 10.1.2.1'
+
+vss:
+	${RUN} bash -l -c 'env lets-encrypt vss.rstms.net 10.1.2.1'
 
 shell:
 	${RUN} bash -l
