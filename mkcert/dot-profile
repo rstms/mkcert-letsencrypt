@@ -4,7 +4,7 @@ chmod 0400 .ssh/gateway
 cat >.ssh/config <<-EOF
 host $GATEWAY
   User $GATEWAY_USER
-  IdentityFile ~/.ssh/gateway
+  IdentityFile ${HOME}/.ssh/gateway
   IdentitiesOnly yes
   StrictHostKeyChecking No
 EOF

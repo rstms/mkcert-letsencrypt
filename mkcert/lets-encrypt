@@ -65,9 +65,10 @@ dns_update() {
 
 dns_update $GATEWAY_IP
 
-ssh -N -R 80:localhost:80 $GATEWAY >ssh.log 2>&1 &
+SSH_CONFIG=${HOME}/.ssh/config
+sudo ssh -v -F ${SSH_CONFIG} -N -g -R *:80:localhost:80 $GATEWAY >ssh.log 2>&1 &
 step ca certificate $FQDN $CERT_DIR/$FQDN.crt $CERT_DIR/$FQDN.key --acme $ACME
-pkill ssh
+sudo pkill ssh
 
 dns_delete $FQDN
 dns_update $IP
